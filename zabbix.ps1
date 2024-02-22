@@ -42,6 +42,31 @@ function write-DRMMAlert ($message) {
   write-output "<-End Result->"
 } ## write-DRMMAlert
 
+function Get-ProcessOutput {
+  Param (
+    [Parameter(Mandatory=$true)]$FileName,
+    $Args
+  )
+
+  $process = New-Object System.Diagnostics.Process
+  $process.StartInfo.WindowStyle = "Hidden"
+  $process.StartInfo.CreateNoWindow = $true
+  $process.StartInfo.UseShellExecute = $false
+  $process.StartInfo.RedirectStandardOutput = $true
+  $process.StartInfo.RedirectStandardError = $true
+  $process.StartInfo.FileName = $FileName
+  if($Args) {$process.StartInfo.Arguments = $Args}
+  $out = $process.Start()
+
+  $StandardError = $process.StandardError.ReadToEnd()
+  $StandardOutput = $process.StandardOutput.ReadToEnd()
+
+  $output = New-Object PSObject
+  $output | Add-Member -type NoteProperty -name StandardOutput -Value $StandardOutput
+  $output | Add-Member -type NoteProperty -name StandardError -Value $StandardError
+  return $output
+} ## Get-ProcessOutput
+
 function StopClock {
   #Stop script execution time calculation
   $script:sw.Stop()
@@ -102,7 +127,7 @@ function dir-Check () {
 }
 
 function run-Download {
-  logERR 3 "run-Download" "Line 88 - Downloading Zabbix 2`r`n$($strLineSeparator)"
+  logERR 3 "run-Download" "Downloading Zabbix 2`r`n$($strLineSeparator)"
   try { Invoke-WebRequest -uri "$($zabbixDownload)" -OutFile "$($pkg)" } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
     $taskdiag = "Failed to Download Zabbix 2`r`n$($strLineSeparator)"
@@ -123,12 +148,13 @@ function run-Deploy {
     $params = "/l*v $($logFile) "
     $params += "HOSTNAME=`"$($script:dattoCustomerName) - $($script:hostname)`" ENABLEPATH=1 HOSTMETADATA=Windows$($producttype):$($script:ActivePassive) "
     $params += "LISTENPORT=10050 SERVER=$($script:serverHostnameOrIP) SERVERACTIVE=$($script:serverHostnameOrIP) INSTALLFOLDER=`"$($installFolder)`" "
-    $params += "TLSCONNECT=psk TLSACCEPT=psk TLSPSKIDENTITY=$($script:pskID) TLSPSKVALUE=$($script:pskValue) /qn"
-    $taskdiag = Start-Process -FilePath $pkg -ArgumentList "$($params)" -PassThru -Wait
-    logERR 3 "run-Deploy" "Deploy Complete :`r`n$($taskdiag)`r`n$($strLineSeparator)"
+    $params += "TLSCONNECT=psk TLSACCEPT=psk TLSPSKIDENTITY=$($script:pskID) TLSPSKVALUE=$($script:pskValue) RefreshActiveChecks=120 /qn"
+    #$taskdiag = Start-Process -FilePath $pkg -ArgumentList "$($params)" -PassThru -Wait
+    $taskdiag = Get-ProcessOutput -FileName "C:\Windows\system32\msiexec.exe" -Args "/i $($pkg) $($params)"
+    logERR 3 "run-Deploy" "Deploy Complete :`r`n`t- StdOut : $($taskdiag.standardoutput) `r`n`t- StdErr : $($taskdiag.standarderror)`r`n`r`n$($strLineSeparator)"
   } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
-    $taskdiag += "Failed to Install Zabbix 2`r`n$($strLineSeparator)"
+    $taskdiag = "Failed to Install Zabbix 2`r`n$($strLineSeparator)"
     logERR 2 "run-Deploy" "Line 106 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
   }
   Start-Sleep -seconds 30
@@ -139,7 +165,8 @@ function run-Remove {
   $regPath = get-itemproperty -path 'HKLM:\SOFTWARE\Zabbix SIA\Zabbix Agent 2 (64-bit)' -name 'ProductCode'
   $regPath.ProductCode
   Start-Process -FilePath "C:\Windows\system32\msiexec.exe" -ArgumentList "/x $($regPath.ProductCode) /qn" -PassThru -Wait
-  rm $installFolder -Recurse -Force -SilentlyContinue
+  rm $installFolder -Recurse -Force -ErrorAction SilentlyContinue
+  #sc.exe delete "Zabbix Agent 2"
 }
 
 function run-Upgrade () {
@@ -211,20 +238,17 @@ function run-Monitor {
 #region - SCRIPT
 $ScrptStartTime = (get-date -format "yyyy-MM-dd HH:mm:ss").ToString()
 $script:sw = [Diagnostics.Stopwatch]::StartNew()
+logERR 3 "Mode : $($script:mode)" "Line 215 - Begin Script : $($ScrptStartTime)"
 dir-Check -wait
 switch ($script:mode) {
   "Deploy" {
-    $taskdiag = "Downloading Zabbix 2`r`n$($strLineSeparator)"
-    logERR 3 "Mode : $($script:mode)" "Line 168 - $($taskdiag)"
     run-Download -wait
-    $taskdiag = "Deploying Zabbix 2`r`n$($strLineSeparator)"
-    logERR 3 "Mode : $($script:mode)" "Line 171 - $($taskdiag)"
     run-Deploy -wait
     $script:zabbixInstalled = Get-Service "Zabbix Agent 2"
     if ($($script:zabbixInstalled.Status) -ne "Running") {
       Restart-Service -Name $($script:zabbixInstalled.Name)
-      $taskdiag = "Warning! Service is not started : `r`nAttempting to start`r`n$($strLineSeparator)"
-      logERR 3 "Mode : $($script:mode)" "Line 177 - $($taskdiag)"
+      $taskdiag = "Warning! Service is not started : `r`n`tAttempting to start`r`n`t$($strLineSeparator)"
+      logERR 3 "Mode : $($script:mode)" "Line 224 - $($taskdiag)"
       #Write-Warning "Service is not started : `r`n Attempting to start"
       Start-Service -Name $($script:zabbixInstalled.Name)
       #& "c:\IT\Zabbix\zabbix_agent2.exe -c c:\IT\Zabbix\zabbix_agent2.conf -i"
