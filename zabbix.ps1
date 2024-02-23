@@ -26,7 +26,7 @@ $logPath                    = "C:\IT\Log\Zabbix_Monitor"
 $logFile                    = "C:\IT\Log\Zabbix_install.log"
 $pkg                        = "C:\IT\Zabbix_Agent_2.msi"
 $zabbixDownload             = "https://cdn.zabbix.com/zabbix/binaries/stable/6.4/6.4.11/zabbix_agent2-6.4.11-windows-amd64-openssl.msi"
-$drmmRoles = $env:UDF_7
+$drmmRoles                  = $env:UDF_7
 $strLineSeparator           = "----------------------------------"
 #endregion - DECLORATIONS
 
@@ -165,8 +165,14 @@ function run-Remove {
   logERR 3 "run-Remove" "Line 135 - Removing Zabbix`r`n$($strLineSeparator)"
   $regPath = get-itemproperty -path 'HKLM:\SOFTWARE\Zabbix SIA\Zabbix Agent 2 (64-bit)' -name 'ProductCode'
   $regPath.ProductCode
-  Start-Process -FilePath "C:\Windows\system32\msiexec.exe" -ArgumentList "/x $($regPath.ProductCode) /qn" -PassThru -Wait
-  rm $installFolder -Recurse -Force -ErrorAction SilentlyContinue
+  try {
+    Start-Process -FilePath "C:\Windows\system32\msiexec.exe" -ArgumentList "/x $($regPath.ProductCode) /qn" -PassThru -Wait
+    rm $installFolder -Recurse -Force -ErrorAction SilentlyContinue
+  } catch {
+    $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
+    $taskdiag += "`r`nFailed to remove Zabbix 2`r`n$($strLineSeparator)"
+    logERR 2 "run-Remove" "Line 106 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+  }
   #sc.exe delete "Zabbix Agent 2"
 }
 
@@ -260,7 +266,6 @@ switch ($script:mode) {
       $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
       $taskdiag = "Error failed to start $($script:zabbixInstalled.Name) : Attempting redeploy`r`n$($strLineSeparator)"
       logERR 3 "Mode : $($script:mode)" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
-      "$($script:diag)" | add-content $logPath -force
         try {
           run-Upgrade -wait
         }
@@ -268,7 +273,6 @@ switch ($script:mode) {
           $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
           $taskdiag = "Error failed to redeploy Zabbix`r`n$($strLineSeparator)"
           logERR 2 "Mode : $($script:mode)" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
-          "$($script:diag)" | add-content $logPath -force
       }
     }
   }
