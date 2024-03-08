@@ -1,4 +1,4 @@
-#FIX LINE # WHEN SCRIPT IS DONE CAMERON
+
 <#
     .SYNOPSIS
         Monitoring - Windows - Zabbix - Cameron Day - Chris Bledsoe
@@ -132,7 +132,7 @@ function run-Download {
   try { Invoke-WebRequest -uri "$($zabbixDownload)" -OutFile "$($pkg)" } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
     $taskdiag = "Failed to Download Zabbix 2`r`n$($strLineSeparator)"
-    logERR 2 "run-Download" "Line 92 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+    logERR 2 "run-Download" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
   }
 }
 
@@ -156,13 +156,13 @@ function run-Deploy {
   } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
     $taskdiag = "Failed to Install Zabbix 2`r`n$($strLineSeparator)"
-    logERR 2 "run-Deploy" "Line 106 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+    logERR 2 "run-Deploy" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
   }
   Start-Sleep -seconds 30
 }
 
 function run-Remove {
-  logERR 3 "run-Remove" "Line 135 - Removing Zabbix`r`n$($strLineSeparator)"
+  logERR 3 "run-Remove" "Removing Zabbix`r`n$($strLineSeparator)"
   $regPath = get-itemproperty -path 'HKLM:\SOFTWARE\Zabbix SIA\Zabbix Agent 2 (64-bit)' -name 'ProductCode'
   $regPath.ProductCode
   try {
@@ -171,7 +171,7 @@ function run-Remove {
   } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
     $taskdiag += "`r`nFailed to remove Zabbix 2`r`n$($strLineSeparator)"
-    logERR 2 "run-Remove" "Line 106 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+    logERR 2 "run-Remove" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
   }
   #sc.exe delete "Zabbix Agent 2"
 }
@@ -182,7 +182,7 @@ function run-Upgrade () {
   } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
     $taskdiag += "`r`nFailed to Remove Zabbix 2`r`n$($strLineSeparator)"
-    logERR 2 "run-Upgrade" "Line 106 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+    logERR 2 "run-Upgrade" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
   }
   Start-Sleep -Seconds 2
   try {
@@ -191,28 +191,28 @@ function run-Upgrade () {
   } catch {
     $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
     $taskdiag += "`r`nFailed to Upgrade Zabbix 2`r`n$($strLineSeparator)"
-    logERR 2 "run-Upgrade" "Line 106 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+    logERR 2 "run-Upgrade" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
   }
 }
 
 function run-Monitor {
   if ($($script:zabbixInstalled.Status) -eq "Stopped") {
     $taskdiag = "Warning! Service is not started : `r`nAttempting to start`r`n$($strLineSeparator)"
-    logERR 3 "run-Monitor" "Line 153 - $($taskdiag)"
+    logERR 3 "run-Monitor" "$($taskdiag)"
     try {Start-Service -Name $($script:zabbixInstalled.Name)} catch {
       $err = "$($_.Exception)`r`n$($_.scriptstacktrace)`r`n$($_)"
       $taskdiag += "`r`nFailed to Start Zabbix Service`r`n$($strLineSeparator)"
-      logERR 2 "run-Monitor" "Line 157 - $($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
+      logERR 2 "run-Monitor" "$($taskdiag)`r`n$($err)`r`n$($strLineSeparator)"
     }
     #& "c:\IT\Zabbix\zabbix_agent2.exe -c c:\IT\Zabbix\zabbix_agent2.conf -i"
   }
   if (-not ($script:blnBREAK)) {
     if ($($script:zabbixInstalled.Status) -eq "Running") { 
       $taskdiag = "$($script:zabbixInstalled.Name) is started`r`n$($strLineSeparator)"
-      logERR 3 "run-Monitor" "Line 163 - $($taskdiag)" 
+      logERR 3 "run-Monitor" "$($taskdiag)" 
     }
     $taskdiag = "Begin Verification of Correct Configuration : `r`n$($strLineSeparator)"
-    logERR 3 "run-Monitor" "Line 166 - $($taskdiag)" 
+    logERR 3 "run-Monitor" "$($taskdiag)" 
     #verify ServerIP, and customername & devicename in proper format : '[CustomerName - DeviceName]'
     $blnMatch = $true
     $localConfig = Get-Content -Path "C:\IT\Zabbix\zabbix_agent2.conf"
@@ -245,7 +245,7 @@ function run-Monitor {
 #region - SCRIPT
 $ScrptStartTime = (get-date -format "yyyy-MM-dd HH:mm:ss").ToString()
 $script:sw = [Diagnostics.Stopwatch]::StartNew()
-logERR 3 "Mode : $($script:mode)" "Line 215 - Begin Script : $($ScrptStartTime)"
+logERR 3 "Mode : $($script:mode)" "Begin Script : $($ScrptStartTime)"
 dir-Check -wait
 switch ($script:mode) {
   "Deploy" {
@@ -256,7 +256,7 @@ switch ($script:mode) {
       if ($($script:zabbixInstalled.Status) -ne "Running") {
         Restart-Service -Name $($script:zabbixInstalled.Name)
         $taskdiag = "Warning! Service is not started : `r`n`tAttempting to start`r`n`t$($strLineSeparator)"
-        logERR 3 "Mode : $($script:mode)" "Line 224 - $($taskdiag)"
+        logERR 3 "Mode : $($script:mode)" "$($taskdiag)"
         #Write-Warning "Service is not started : `r`n Attempting to start"
         Start-Service -Name $($script:zabbixInstalled.Name)
         #& "c:\IT\Zabbix\zabbix_agent2.exe -c c:\IT\Zabbix\zabbix_agent2.conf -i"
@@ -285,7 +285,7 @@ switch ($script:mode) {
   "Monitor" {
     if (-not (test-path -path "C:\IT\Zabbix")) { 
       $taskdiag = "No C:\IT\Zabbix dir Means that Zabbix was not Installed Correctly : Rerunning Download/Deploy`r`n$($strLineSeparator)"
-      logERR 3 "Mode : $($script:mode)" "Line 213 - $($taskdiag)"
+      logERR 3 "Mode : $($script:mode)" "$($taskdiag)"
       run-Download -wait
       run-Deploy -wait
     }
@@ -302,7 +302,7 @@ if (-not $script:blnBREAK) {
     "$($script:diag)" | add-content $logPath -force
     write-DRMMAlert "$($script:mode) : Healthy : $($script:finish)"
     write-DRMMDiag "$($script:diag)"
-    exit 1
+    exit 0
   } elseif ($script:blnWARN) {
     $enddiag = "Execution Completed with Warnings : $($script:finish)`r`n$($strLineSeparator)`r`n"
     logERR 3 "END" "$($enddiag)"
@@ -310,7 +310,7 @@ if (-not $script:blnBREAK) {
     "$($script:diag)" | add-content $logPath -force
     write-DRMMAlert "$($script:mode) : Execution Completed with Warnings : Diagnostics - $($logPath) : $($script:finish)"
     write-DRMMDiag "$($script:diag)"
-    exit 0
+    exit 1
   }
 } elseif ($script:blnBREAK) {
   #WRITE TO LOGFILE
@@ -322,4 +322,3 @@ if (-not $script:blnBREAK) {
   exit 1
 }
 #endregion - SCRIPT
-#FIX LINE # WHEN SCRIPT IS DONE CAMERON
